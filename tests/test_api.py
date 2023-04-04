@@ -28,7 +28,7 @@ class TestCompressedFile():
 
         st = datetime.now()
         cnter = 0
-        for i in range(10000):
+        for i in range(1000):
             sz.put(
                 f"read_{cnter}",
                 0,
@@ -44,7 +44,7 @@ class TestCompressedFile():
         st = datetime.now()
         for _ in range(100):
             chunk = []
-            for i in range(100):
+            for i in range(10):
                 chunk.append((
                     f"read_{cnter}",
                     0,

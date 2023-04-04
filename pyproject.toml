@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pysz"
-version = "0.2.0"
+version = "0.3.0"
 description = "Package for reading and writing svb-zstd compressed data"
 authors = ["Jinyang Zhang <zhangjinyang@biols.ac.cn>"]
 readme = "README.md"
