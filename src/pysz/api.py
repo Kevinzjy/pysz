@@ -83,7 +83,10 @@ class CompressedFile(object):
             assert_dir_exists(data_dir)
             assert_file_exists(self.idx_path)
             assert_file_exists(self.dat_path)
-            self.load_header()
+            try:
+                self.load_header()
+            except Exception as e:
+                raise RuntimeError("Corrupted SZ file found. Please regenerate the SZ file properly.")
         elif self.mode == 'w':
             mkdir(data_dir, overwrite=overwrite)
             self.save_header(header, attributes, datasets)
@@ -190,7 +193,27 @@ class CompressedFile(object):
                       Fastq: Basecalled fastq, str
                        Move: move tables, np.uint16
         """
-        self.q_in.put(data)
+        self.q_in.put((False, data))
+
+    def put_chunk(self, chunk):
+        """
+        Put new data into queue for compressing and saving
+
+        Args:
+            *data: data must be in specific order consistent to the attributes and datasets.
+                The default SZ contains the following attributes:
+
+                          ID: read ID, str
+                      Offset: Offset for raw current data, np.int32
+                    Raw_unit: Raw unit for raw current data, np.float32
+
+                And the following datasets:
+
+                        Raw: Raw current data points, np.uint32
+                      Fastq: Basecalled fastq, str
+                       Move: move tables, np.uint16
+        """
+        self.q_in.put((True, chunk))
 
     def encode(self, data):
         """
@@ -240,8 +263,18 @@ class CompressedFile(object):
             raw = self.q_in.get()
             if raw is None:
                 break
-            dat_line, idx_line = self.encode(raw)
-            self.q_out.put((dat_line, idx_line))
+            # Single-read mode
+            if raw[0] is False:
+                dat_line, idx_line = self.encode(raw[1])
+                self.q_out.put((False, (dat_line, idx_line)))
+            else:
+                # Chunk mode
+                chunk = []
+                for read in raw[1]:
+                    dat_line, idx_line = self.encode(read)
+                    chunk.append((dat_line, idx_line))
+                self.q_out.put((True, chunk))
+
         self.q_out.put(None)
 
     def writer(self):
@@ -260,13 +293,21 @@ class CompressedFile(object):
                     n_alive -= 1
                     continue
 
-                # Record cursor position everytime
-                dat_line, idx_line = res
-                dat_out.write(dat_line)
-                shift, length = cursor, len(dat_line)
-                cursor += length
-                idx_line = [str(length), str(shift), ] + idx_line
-                idx_out.write('\t'.join(idx_line) + '\n')
+                if res[0] is False:
+                    # Record cursor position everytime
+                    dat_line, idx_line = res[1]
+                    dat_out.write(dat_line)
+                    shift, length = cursor, len(dat_line)
+                    cursor += length
+                    idx_line = [str(length), str(shift), ] + idx_line
+                    idx_out.write('\t'.join(idx_line) + '\n')
+                else:
+                    for dat_line, idx_line in res[1]:
+                        dat_out.write(dat_line)
+                        shift, length = cursor, len(dat_line)
+                        cursor += length
+                        idx_line = [str(length), str(shift), ] + idx_line
+                        idx_out.write('\t'.join(idx_line) + '\n')
 
     def get(self, idx):
         """

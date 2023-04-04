@@ -30,16 +30,32 @@ sz = CompressedFile(
     overwrite=True, n_threads=8
 )
 
-# Save some reads
-for i in range(100):
+# Save data in single-read mode 
+for i in range(10000):
     sz.put(
-        f"read_{i}", #ID
-        0, #Offset
-        np.random.rand(), #Raw_unit
-        np.random.randint(70, 150, 4000), #Raw
-        ''.join(np.random.choice(['A', 'T', 'C', 'G'], 450)), #Fastq
-        np.random.randint(0, 1, 4000), #Move
+        f"read_{i}",
+        0,
+        np.random.rand(),
+        np.random.randint(70, 150, 4000),
+        ''.join(np.random.choice(['A', 'T', 'C', 'G'], 450)),
+        np.random.randint(0, 1, 4000),
+        np.random.randint(70, 150, 4000),
     )
+
+# Save data in chunk mode
+for i in range(100):
+    chunk = []
+    for j in range(100):
+        chunk.append((
+            f"read_{i}_{j}",
+            0,
+            np.random.rand(),
+            np.random.randint(70, 150, 4000),
+            ''.join(np.random.choice(['A', 'T', 'C', 'G'], 450)),
+            np.random.randint(0, 1, 4000),
+            np.random.randint(70, 150, 4000),
+        ))
+    sz.put_chunk(chunk)
 
 # Remember to call it to ensure everything finished successfully
 sz.close()
@@ -54,6 +70,12 @@ sz = CompressedFile(
         "/tmp/test_sz", mode="r", allow_multiprocessing=True,
 )
 
+# Get index information
+print(sz.idx.head())
+
+# Get total read number
+print(f"Loaded {sz.idx.shape[0]} reads")
+
 # Get the first read
 read = sz.get(0)
 print(read.ID, read.Offset, read.Raw_unit, read.Raw, read.Fastq, read.Move)
@@ -65,3 +87,6 @@ reads = sz.get(np.arange(10))
 idx = sz.idx.index[sz.idx['ID'].isin(['read_0', 'read_1'])]
 reads = sz.get(idx)
 ```
+
+Note: for reading SZ file with multiprocessing, pass the chunked index as parameter, 
+and init CompressedFile instance with `allow_multiprocessing=True` separately in each process.
