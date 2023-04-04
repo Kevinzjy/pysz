@@ -6,7 +6,7 @@ from collections import OrderedDict, namedtuple
 from zstandard import ZstdDecompressor
 
 from pysz import __version__
-from pysz.compression import svb_decode, svb_encode, zstd_decode, zstd_encode, str_decode, str_encode
+from pysz.compression import svb_decode, svb_encode, zstd_decode, zstd_encode, str_decode, str_encode, zfp_decode, zfp_encode
 from pysz.utils import mkdir, assert_file_exists, assert_dir_exists
 
 from multiprocessing import Manager, Process
@@ -28,7 +28,7 @@ Dtypes_names = {
     str: "S",
     np.int16: "I16", np.int32: "I32",
     np.uint16: "U16", np.uint32: "U32",
-    np.float16: "F16", np.float32: "F32",
+    np.float16: "F16", np.float32: "F32", np.float64: "F64", np.float128: "F128",
 }
 Dtypes = {j: i for i, j in Dtypes_names.items()}
 
@@ -244,6 +244,7 @@ class CompressedFile(object):
                 d_size = ''
             else:
                 d_bstr = np.array(getattr(record, dataset_id)).astype(dataset_dtype).tobytes()
+                # d_bstr = zfp_encode(np.array(getattr(record, dataset_id)).astype(dataset_dtype))
                 d_size = ''
 
             d_encoded = zstd_encode(d_bstr)
@@ -349,6 +350,7 @@ class CompressedFile(object):
                     d_decoded = str_decode(bstr)
                 else:
                     d_decoded = np.frombuffer(bstr, dtype=d_dtype)
+                    # d_decoded = zfp_decode(bstr)
                 datasets.append(d_decoded)
             record = attr + datasets
             reads.append(self.record(*record))
@@ -364,3 +366,7 @@ class CompressedFile(object):
             for p in self.pool:
                 p.join()
             self.worker.join()
+        else:
+            if self.fh is not None:
+                self.fh.close()
+

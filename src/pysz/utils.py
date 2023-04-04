@@ -1,5 +1,4 @@
 import sys
-import warnings
 from pathlib import Path
 
 def mkdir(dir_name, overwrite=False):

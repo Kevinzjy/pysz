@@ -1,3 +1,4 @@
+# import zfpy
 import numpy as np
 import streamvbyte
 from zstandard import ZstdDecompressor, ZstdCompressor
@@ -106,3 +107,11 @@ def svb_decode(data, size, dtype=np.int32):
     decoded = np.frombuffer(data, dtype=np.uint8)
     decompressed = streamvbyte.decode(decoded, size, dtype=dtype)
     return decompressed
+
+
+# def zfp_encode(data):
+#     return zfpy.compress_numpy(data)
+
+
+# def zfp_decode(compressed):
+#     return zfpy.decompress_numpy(compressed)

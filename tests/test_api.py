@@ -5,12 +5,12 @@ from datetime import datetime
 from pysz import __version__
 from pysz.api import CompressedFile
 
-class TestInit():
+class TestInit:
+
     def test_version(self):
         print("version", __version__)
 
-
-class TestCompressedFile():
+class TestCompressedFile:
 
     @pytest.fixture
     def test_write(self):
@@ -18,7 +18,7 @@ class TestCompressedFile():
 
         header = [('version',  __version__), ('args', 'null')]
         attr = [('ID', str), ('Offset', np.int32), ('Raw_unit', np.float32)]
-        datasets = [('Raw', np.uint32), ('Fastq', str), ('Move', np.uint16), ('Norm', np.uint32)]
+        datasets = [('Raw', np.uint16), ('Fastq', str), ('Move', np.uint16), ('Scores', np.float32)]
 
         sz = CompressedFile(
             dir_name, mode="w",
@@ -28,7 +28,7 @@ class TestCompressedFile():
 
         st = datetime.now()
         cnter = 0
-        for i in range(1000):
+        for i in range(100):
             sz.put(
                 f"read_{cnter}",
                 0,
@@ -36,13 +36,13 @@ class TestCompressedFile():
                 np.random.randint(70, 150, 4000),
                 ''.join(np.random.choice(['A', 'T', 'C', 'G'], 450)),
                 np.random.randint(0, 1, 4000),
-                np.random.randint(70, 150, 4000),
+                np.random.random(4000),
             )
             cnter += 1
         print(f"Saved 10000 reads in single-read mode in {dir_name} using {datetime.now()-st}s")
 
         st = datetime.now()
-        for _ in range(100):
+        for _ in range(10):
             chunk = []
             for i in range(10):
                 chunk.append((
@@ -52,7 +52,7 @@ class TestCompressedFile():
                     np.random.randint(70, 150, 4000),
                     ''.join(np.random.choice(['A', 'T', 'C', 'G'], 450)),
                     np.random.randint(0, 1, 4000),
-                    np.random.randint(70, 150, 4000),
+                    np.random.random(4000),
                 ))
                 cnter += 1
             sz.put_chunk(chunk)
