@@ -43,6 +43,8 @@ Supported data types：
 - np.uint16 / np.uint32
 - np.float16 / np.float32 / np.float64 / np.float128
 
+Example for creating SZ file
+
 ```python
 import numpy as np
 from pysz.api import CompressedFile
@@ -80,11 +82,75 @@ for i in range(100):
             np.random.randint(70, 150, 4000),
             ''.join(np.random.choice(['A', 'T', 'C', 'G'], 450)),
             np.random.randint(0, 1, 4000),
-        ))
+        ))   
     sz.put_chunk(chunk)
 
 # Remember to call it to ensure everything finished successfully
 sz.close()
+```
+
+Example for creating SZ file with multiprocessing
+
+> Note: for creating SZ file with multiprocessing, pass the `CompressedFile.q_in` (a multiprocessing.Manager().Queue() instance)
+> as parameter to parallelized function. Then use `queue.put((True, chunk))` and `queue.put((True, read))` for saving reads
+> or chunks directly.
+
+```python
+import numpy as np
+from pysz.api import CompressedFile
+from multiprocessing import Pool
+
+def writer(queue, chunk_id):
+    # Write in single-read mode
+    for i in range(10):
+        read = (
+            f"read_{chunk_id}_{i}",
+            0,
+            np.random.rand(),
+            np.random.randint(70, 150, 4000),
+            ''.join(np.random.choice(['A', 'T', 'C', 'G'], 450)),
+            np.random.randint(0, 1, 4000),
+            np.random.random(4000),
+        )
+        queue.put((False, read))
+
+    # Write in chunk mode
+    chunk = []
+    for i in range(10):
+        chunk.append((
+            f"chunk_{chunk_id}_{i}",
+            0,
+            np.random.rand(),
+            np.random.randint(70, 150, 4000),
+            ''.join(np.random.choice(['A', 'T', 'C', 'G'], 450)),
+            np.random.randint(0, 1, 4000),
+            np.random.random(4000),
+        ))
+    queue.put((True, chunk))
+
+
+header = [('version',  '0.0.1'), ('date', '2023-04-03')]
+attr = [('ID', str), ('Offset', np.int32), ('Raw_unit', np.float32)]
+datasets = [('Raw', np.uint32), ('Fastq', str), ('Move', np.uint16)]
+
+# Create new SZ file
+sz = CompressedFile(
+    "/tmp/test_sz", mode="w",
+    header=header, attributes=attr, datasets=datasets,
+    overwrite=True, n_threads=8
+)
+
+# Use pool for multiprocessing
+pool = Pool(8)
+jobs = []
+for i in range(10):
+    jobs.append(pool.apply_async(writer, (sz.q_in, i, )))
+pool.close()
+pool.join()
+
+# Remember to call it to ensure everything finished successfully
+sz.close()
+
 ```
 
 Examples for reading SZ file
@@ -168,6 +234,9 @@ for job in jobs:
 pool.join()
 ```
 
+Please refer to `tests/test_api.py` for detailed usage. 
+
 ## TODO
 
 - Add support for zfp for lossy float compression
+- Refactor the naive solution for using multiprocessing for writing SZ.

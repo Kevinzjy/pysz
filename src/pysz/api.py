@@ -6,7 +6,7 @@ from collections import OrderedDict, namedtuple
 from zstandard import ZstdDecompressor
 
 from pysz import __version__
-from pysz.compression import svb_decode, svb_encode, zstd_decode, zstd_encode, str_decode, str_encode, zfp_decode, zfp_encode
+from pysz.compression import svb_decode, svb_encode, zstd_decode, zstd_encode, str_decode, str_encode
 from pysz.utils import mkdir, assert_file_exists, assert_dir_exists
 
 from multiprocessing import Manager, Process
